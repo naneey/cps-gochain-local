@@ -46,7 +46,8 @@
     },
     "validatorList": [
       "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd"
-    ]
+    ],
+    "blockInterval": 200
   },
   "message": "genesis for local node",
   "nid": "0x3"
