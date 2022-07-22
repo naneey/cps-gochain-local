@@ -23,23 +23,25 @@ A collection of helper scripts to run gochain docker container as a local networ
 
 ## Usage
 
-You can start or stop the docker container using the following script. You can also use [docker compose](#using-docker-compose) to start or stop the container 
+You can start or stop the docker container using the following script. You can also use [docker compose](#using-docker-compose) to start or stop the container.
 
 ```
 $ ./run_gochain.sh
-Usage: ./run_gochain.sh [start|stop|pause|unpause] (docker-tag)
+Usage: ./run_gochain.sh [start|stop|pause|unpause|ps]
 ```
 
 ### Start the container
 
 ```
 $ ./run_gochain.sh start
->>> START iconee 9082 latest
-48e4c66fec68d01e767da91cbbb043c03f595b33cac69c8cdf94f39eaa03b34e
+>>> START with compose-single.yml
+Creating network "gochain-local_default" with the default driver
+Creating gochain-iconee ... done
 
-$ docker ps
-CONTAINER ID   IMAGE                        COMMAND                  CREATED         STATUS         PORTS                                        NAMES
-48e4c66fec68   goloop/gochain-icon:latest   "/entrypoint /bin/sh…"   9 seconds ago   Up 8 seconds   8080/tcp, 9080/tcp, 0.0.0.0:9082->9082/tcp   gochain-iconee
+$ ./run_gochain.sh ps
+     Name                   Command               State                              Ports
+----------------------------------------------------------------------------------------------------------------------
+gochain-iconee   /entrypoint /bin/sh -c /go ...   Up      8080/tcp, 9080/tcp, 0.0.0.0:9082->9082/tcp,:::9082->9082/tcp
 ```
 
 Note that log messages will be generated at `./chain/iconee.log`.
@@ -62,9 +64,10 @@ T|20211008-03:27:35.244925|b6b5|-|TP|transport.go:383 registerPeerHandler &{0xc0
 
 ```
 $ ./run_gochain.sh stop
->>> STOP gochain-iconee
-gochain-iconee
-gochain-iconee
+>>> STOP with compose-single.yml
+Stopping gochain-iconee ... done
+Removing gochain-iconee ... done
+Removing network gochain-local_default
 ```
 
 ### Pause the container
@@ -79,47 +82,71 @@ $ ./run_gochain.sh unpause
 
 ## Using Docker-Compose
 
+There are two docker Compose files as the following.
+  - `compose-single.yml`: run a single gochain node as the previous script example
+  - `compose-multi.yml`: run multiple (four) gochain nodes which validate the same blocks
+
 ### Create and Start the container
 
+#### For a single gochain node:
 ```
-$ docker-compose up -d
-[+] Running 2/2
- ⠿ Network gochain-local_default  Created
- ⠿ Container gochain-iconee       Started
+$ docker-compose -f compose-single.yml up -d
+Creating network "gochain-local_default" with the default driver
+Creating gochain-iconee ... done
 
-$ docker ps
-CONTAINER ID   IMAGE                        COMMAND                  CREATED         STATUS         PORTS                                        NAMES
-48e4c66fec68   goloop/gochain-icon:latest   "/entrypoint /bin/sh…"   9 seconds ago   Up 8 seconds   8080/tcp, 9080/tcp, 0.0.0.0:9082->9082/tcp   gochain-iconee
-```
-
-### Check logs
-
-```
-$docker-compose logs -f
+$ docker-compose -f compose-single.yml ps
+     Name                   Command               State                              Ports
+----------------------------------------------------------------------------------------------------------------------
+gochain-iconee   /entrypoint /bin/sh -c /go ...   Up      8080/tcp, 9080/tcp, 0.0.0.0:9082->9082/tcp,:::9082->9082/tcp
 ```
 
-### Stop the container
-
+#### For multiple gochain nodes:
 ```
-$docker-compose stop
+$ docker-compose -f compose-multi.yml up -d
+Creating network "gochain-local_default" with the default driver
+Creating gochain-local_node3_1 ... done
+Creating gochain-local_node0_1 ... done
+Creating gochain-local_node1_1 ... done
+Creating gochain-local_node2_1 ... done
+
+$ docker-compose -f compose-multi.yml ps
+        Name                       Command               State                         Ports
+-------------------------------------------------------------------------------------------------------------------
+gochain-local_node0_1   /entrypoint /bin/sh -c /go ...   Up      8080/tcp, 0.0.0.0:9080->9080/tcp,:::9080->9080/tcp
+gochain-local_node1_1   /entrypoint /bin/sh -c /go ...   Up      8080/tcp, 0.0.0.0:9081->9080/tcp,:::9081->9080/tcp
+gochain-local_node2_1   /entrypoint /bin/sh -c /go ...   Up      8080/tcp, 0.0.0.0:9082->9080/tcp,:::9082->9080/tcp
+gochain-local_node3_1   /entrypoint /bin/sh -c /go ...   Up      8080/tcp, 0.0.0.0:9083->9080/tcp,:::9083->9080/tcp
 ```
 
 ### Stop and remove the container
+
 ```
-$docker-compose down
+$ docker-compose -f compose-single.yml down
 ```
 
-### Pause the container
-This will pause the local blockchain. No new blocks will be produced.
+or
 ```
-$docker-compose pause
-```
-
-### Unpause the container
-This will resume the blockchain from the same paused height.
-```
-$docker-compose unpause
+$ docker-compose -f compose-multi.yml down
 ```
 
 ## Persistence of Data
-If you want to persist your data across docker restarts, set `GOCHAIN_CLEAN_DATA` in `./data/dockerenv/iconee` to `false`. 
+If you want to persist your data across docker restarts, set `GOCHAIN_CLEAN_DATA` in `./data/single/iconee.env` to `false`.
+In case of the multiple nodes, modify `./data/multi/common.env` instead.
+
+
+## Using Blockchain Tracker
+
+[Tracker](tracker) folder contains a `docker-compose.yml` and `.env` files to run a local blockchain explorer (a.k.a. tracker).
+
+After starting the local gochain nodes (single or multi), run the following command to start the tracker.
+
+```
+$ cd tracker
+$ docker-compose up -d
+Creating network "tracker_default" with the default driver
+Creating tracker_mysql ... done
+Creating tracker_app   ... done
+Creating tracker_nginx ... done
+```
+
+Then open the page [http://127.0.0.1](http://127.0.0.1) with your favorite web browser.
